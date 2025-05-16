@@ -1,15 +1,21 @@
 import './globals.css'
-import { PostHogProvider, ThemeProvider } from './providers'
-import { Toaster } from '@/components/ui/toaster'
-import { Analytics } from '@vercel/analytics/next'
+
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+
+import { Toaster } from '@/components/ui/toaster'
+import { Analytics } from '@vercel/analytics/next'
+
+import {
+  PostHogProvider,
+  ThemeProvider,
+} from './providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Fragments by E2B',
-  description: "Open-source version of Anthropic's Artifacts",
+  title: 'X402.tech',
+  description: 'X402.tech: Next-gen AI agent platform',
 }
 
 export default function RootLayout({

@@ -1,5 +1,16 @@
 'use client'
 
+import {
+  SetStateAction,
+  useEffect,
+  useState,
+} from 'react'
+
+import { DeepPartial } from 'ai'
+import { experimental_useObject as useObject } from 'ai/react'
+import { usePostHog } from 'posthog-js/react'
+import { useLocalStorage } from 'usehooks-ts'
+
 import { ViewType } from '@/components/auth'
 import { AuthDialog } from '@/components/auth-dialog'
 import { Chat } from '@/components/chat'
@@ -9,18 +20,20 @@ import { ChatSettings } from '@/components/chat-settings'
 import { NavBar } from '@/components/navbar'
 import { Preview } from '@/components/preview'
 import { useAuth } from '@/lib/auth'
-import { Message, toAISDKMessages, toMessageImage } from '@/lib/messages'
+import {
+  Message,
+  toAISDKMessages,
+  toMessageImage,
+} from '@/lib/messages'
 import { LLMModelConfig } from '@/lib/models'
 import modelsList from '@/lib/models.json'
-import { FragmentSchema, fragmentSchema as schema } from '@/lib/schema'
+import {
+  fragmentSchema as schema,
+  FragmentSchema,
+} from '@/lib/schema'
 import { supabase } from '@/lib/supabase'
 import templates, { TemplateId } from '@/lib/templates'
 import { ExecutionResult } from '@/lib/types'
-import { DeepPartial } from 'ai'
-import { experimental_useObject as useObject } from 'ai/react'
-import { usePostHog } from 'posthog-js/react'
-import { SetStateAction, useEffect, useState } from 'react'
-import { useLocalStorage } from 'usehooks-ts'
 
 export default function Home() {
   const [chatInput, setChatInput] = useLocalStorage('chat', '')
@@ -304,6 +317,10 @@ export default function Home() {
             isMultiModal={currentModel?.multiModal || false}
             files={files}
             handleFileChange={handleFileChange}
+            onVoiceSubmit={() => {
+              const fakeEvent = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>
+              handleSubmitAuth(fakeEvent)
+            }}
           >
             <ChatPicker
               templates={templates}

@@ -1,5 +1,5 @@
 #!/bin/bash
-export NEXT_PUBLIC_POSTHOG_KEY=""
+export NEXT_PUBLIC_POSTHOG_KEY="phx_14e8T2dF1D18Iu4N6hLw4Xn5tkp4ZJxyf8ydAyn7mEaML2hZ"
 export NEXT_PUBLIC_POSTHOG_HOST=""
 
 # This script runs during building the sandbox template

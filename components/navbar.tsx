@@ -1,5 +1,15 @@
-import Logo from './logo'
-import { Avatar, AvatarImage } from '@/components/ui/avatar'
+import {
+  ArrowRight,
+  LogOut,
+  Trash,
+  Undo,
+} from 'lucide-react'
+import Link from 'next/link'
+
+import {
+  Avatar,
+  AvatarImage,
+} from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -22,8 +32,8 @@ import {
   TwitterLogoIcon,
 } from '@radix-ui/react-icons'
 import { Session } from '@supabase/supabase-js'
-import { ArrowRight, LogOut, Trash, Undo } from 'lucide-react'
-import Link from 'next/link'
+
+import Logo from './logo'
 
 export function NavBar({
   session,
@@ -47,16 +57,16 @@ export function NavBar({
   return (
     <nav className="w-full flex bg-background py-4">
       <div className="flex flex-1 items-center">
-        <Link href="/" className="flex items-center gap-2" target="_blank">
-          <Logo width={24} height={24} />
-          <h1 className="whitespace-pre">Fragments by </h1>
-        </Link>
-        <Link
-          href="https://e2b.dev"
-          className="underline decoration-[rgba(229,123,0,.3)] decoration-2 text-[#ff8800]"
-          target="_blank"
-        >
-          E2B
+        <Link href="/" className="flex items-center gap-2" target="_blank" rel="noopener noreferrer">
+          <img
+            src="/thirdparty/logos/logo1.png"
+            alt="X402.tech Logo"
+            width={36}
+            height={36}
+            style={{ filter: 'drop-shadow(0 0 8px #39ff14) drop-shadow(0 0 16px #a020f0)' }}
+            className="bg-black rounded-full"
+          />
+          <h1 className="text-xl font-bold bg-gradient-to-r from-[#39ff14] to-[#a020f0] text-transparent bg-clip-text drop-shadow-[0_0_8px_#39ff14]">X402.tech</h1>
         </Link>
       </div>
       <div className="flex items-center gap-1 md:gap-4">

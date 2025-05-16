@@ -1,17 +1,20 @@
 'use client'
 
-import { RepoBanner } from './repo-banner'
-import { Button } from '@/components/ui/button'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { isFileInArray } from '@/lib/utils'
-import { ArrowUp, Paperclip, Square, X } from 'lucide-react'
-import { SetStateAction, useEffect, useMemo, useState } from 'react'
+  SetStateAction,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+
+import { X } from 'lucide-react'
 import TextareaAutosize from 'react-textarea-autosize'
+
+import { isFileInArray } from '@/lib/utils'
+
+import { MicrophoneIcon } from './icons'
+import { RepoBanner } from './repo-banner'
 
 export function ChatInput({
   retry,
@@ -27,6 +30,7 @@ export function ChatInput({
   files,
   handleFileChange,
   children,
+  onVoiceSubmit,
 }: {
   retry: () => void
   isErrored: boolean
@@ -41,7 +45,16 @@ export function ChatInput({
   files: File[]
   handleFileChange: (change: SetStateAction<File[]>) => void
   children: React.ReactNode
+  onVoiceSubmit?: () => void
 }) {
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingError, setRecordingError] = useState<string | null>(null)
+  const mediaStreamRef = useRef<MediaStream | null>(null)
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
+  const dataChannelRef = useRef<RTCDataChannel | null>(null)
+  const audioElRef = useRef<HTMLAudioElement | null>(null)
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false)
+
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     handleFileChange((prev) => {
       const newFiles = Array.from(e.target.files || [])
@@ -143,6 +156,116 @@ export function ChatInput({
     }
   }, [isMultiModal])
 
+  async function startRecording() {
+    setRecordingError(null)
+    setIsRecording(true)
+    try {
+      // 1. Fetch ephemeral OpenAI token from backend
+      const tokenResponse = await fetch('/api/openai-ephemeral-token')
+      const data = await tokenResponse.json()
+      const EPHEMERAL_KEY = data.client_secret.value
+
+      // 2. Create peer connection
+      const pc = new RTCPeerConnection()
+      peerConnectionRef.current = pc
+
+      // 3. Set up remote audio playback
+      if (!audioElRef.current) {
+        audioElRef.current = document.createElement('audio')
+        audioElRef.current.autoplay = true
+        document.body.appendChild(audioElRef.current)
+      }
+      pc.ontrack = e => {
+        if (audioElRef.current) audioElRef.current.srcObject = e.streams[0]
+      }
+
+      // 4. Add local audio track
+      const ms = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaStreamRef.current = ms
+      pc.addTrack(ms.getTracks()[0])
+
+      // 5. Set up data channel for events
+      const dc = pc.createDataChannel('oai-events')
+      dataChannelRef.current = dc
+      dc.addEventListener('message', (e) => {
+        try {
+          const event = JSON.parse(e.data)
+          // Listen for transcript events
+          if (event.type === 'response.done' && event.response?.output?.[0]?.text) {
+            handleInputChange({
+              target: { value: event.response.output[0].text },
+              currentTarget: { value: event.response.output[0].text },
+            } as React.ChangeEvent<HTMLTextAreaElement>)
+            setIsRecording(false)
+            stopRecording()
+            if (onVoiceSubmit) onVoiceSubmit()
+          }
+        } catch (err) {
+          // ignore
+        }
+      })
+
+      // 6. Start the session (SDP)
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+      const baseUrl = 'https://api.openai.com/v1/realtime'
+      const model = 'gpt-4o-realtime-preview-2024-12-17'
+      const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
+        method: 'POST',
+        body: offer.sdp,
+        headers: {
+          Authorization: `Bearer ${EPHEMERAL_KEY}`,
+          'Content-Type': 'application/sdp',
+        },
+      })
+      const answer = { type: 'answer' as const, sdp: await sdpResponse.text() }
+      await pc.setRemoteDescription(answer)
+    } catch (err: any) {
+      setRecordingError(err.message || 'Failed to start recording')
+      setIsRecording(false)
+      stopRecording()
+    }
+  }
+
+  function stopRecording() {
+    setIsRecording(false)
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop())
+      mediaStreamRef.current = null
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close()
+      peerConnectionRef.current = null
+    }
+    if (audioElRef.current) {
+      audioElRef.current.remove()
+      audioElRef.current = null
+    }
+  }
+
+  async function handleGenerateImage() {
+    if (!input) return;
+    setIsGeneratingImage(true);
+    try {
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: input }),
+      });
+      const data = await response.json();
+      if (data.image) {
+        // Insert markdown image link into the chat input
+        handleInputChange({
+          target: { value: `${input}\n![generated image](data:image/png;base64,${data.image})` },
+          currentTarget: { value: `${input}\n![generated image](data:image/png;base64,${data.image})` },
+        } as React.ChangeEvent<HTMLTextAreaElement>);
+      }
+    } catch (err) {
+      // Optionally handle error
+    }
+    setIsGeneratingImage(false);
+  }
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -181,7 +304,31 @@ export function ChatInput({
               : ''
           }`}
         >
-          <div className="flex items-center px-3 py-2 gap-1">{children}</div>
+          {children}
+          <div className="flex items-center px-3 py-2 gap-1">
+            <button
+              type="button"
+              aria-label={isRecording ? 'Stop voice input' : 'Start voice input'}
+              title={isRecording ? 'Stop voice input' : 'Start voice input'}
+              className={`p-2 rounded-full hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary ${isRecording ? 'bg-[#39ff14]/20 animate-pulse' : ''}`}
+              onClick={isRecording ? stopRecording : startRecording}
+            >
+              <MicrophoneIcon className={`text-[#39ff14] drop-shadow-[0_0_6px_#a020f0] ${isRecording ? 'animate-pulse' : ''}`} />
+            </button>
+            <button
+              type="button"
+              aria-label="Generate image from prompt"
+              title="Generate image from prompt"
+              className={`p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400 ${isGeneratingImage ? 'opacity-50' : ''}`}
+              onClick={handleGenerateImage}
+              disabled={isGeneratingImage || !input}
+            >
+              {/* Image icon SVG */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-blue-600">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5V7.5A2.25 2.25 0 015.25 5.25h13.5A2.25 2.25 0 0121 7.5v9a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 16.5zm0 0l5.25-5.25a2.25 2.25 0 013.18 0l5.32 5.32M15 11.25a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+              </svg>
+            </button>
+          </div>
           <TextareaAutosize
             autoFocus={true}
             minRows={1}
@@ -194,87 +341,8 @@ export function ChatInput({
             onChange={handleInputChange}
             onPaste={isMultiModal ? handlePaste : undefined}
           />
-          <div className="flex p-3 gap-2 items-center">
-            <input
-              type="file"
-              id="multimodal"
-              name="multimodal"
-              accept="image/*"
-              multiple={true}
-              className="hidden"
-              onChange={handleFileInput}
-            />
-            <div className="flex items-center flex-1 gap-2">
-              <TooltipProvider>
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      disabled={!isMultiModal || isErrored}
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="rounded-xl h-10 w-10"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        document.getElementById('multimodal')?.click()
-                      }}
-                    >
-                      <Paperclip className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Add attachments</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              {files.length > 0 && filePreview}
-            </div>
-            <div>
-              {!isLoading ? (
-                <TooltipProvider>
-                  <Tooltip delayDuration={0}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        disabled={isErrored}
-                        variant="default"
-                        size="icon"
-                        type="submit"
-                        className="rounded-xl h-10 w-10"
-                      >
-                        <ArrowUp className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Send message</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ) : (
-                <TooltipProvider>
-                  <Tooltip delayDuration={0}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        className="rounded-xl h-10 w-10"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          stop()
-                        }}
-                      >
-                        <Square className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Stop generation</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-          </div>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground mt-2 text-center">
-        Fragments is an open-source project made by{' '}
-        <a href="https://e2b.dev" target="_blank" className="text-[#ff8800]">
-          ✶ E2B
-        </a>
-      </p>
     </form>
   )
 }
