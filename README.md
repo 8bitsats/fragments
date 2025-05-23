@@ -1,5 +1,4 @@
-![E2B Fragments Preview Light](/readme-assets/fragments-light.png#gh-light-mode-only)
-![E2B Fragments Preview Dark](/readme-assets/fragments-dark.png#gh-dark-mode-only)
+![Fragments Logo](https://hgexgkspvtxeotelylmj.supabase.co/storage/v1/object/public/art//alicd.png)
 
 # Fragments by E2B
 
