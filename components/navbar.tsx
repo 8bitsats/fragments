@@ -56,17 +56,16 @@ export function NavBar({
 }) {
   return (
     <nav className="w-full flex bg-background py-4">
-      <div className="flex flex-1 items-center">
+      <div className="flex flex-1 items-center justify-center">
         <Link href="/" className="flex items-center gap-2" target="_blank" rel="noopener noreferrer">
           <img
-            src="https://hgexgkspvtxeotelylmj.supabase.co/storage/v1/object/public/art//alicd.png"
-            alt="X402.tech Logo"
-            width={36}
-            height={36}
-            style={{ filter: 'drop-shadow(0 0 8px #39ff14) drop-shadow(0 0 16px #a020f0)' }}
-            className="bg-black rounded-full"
+            src="/smol.png"
+            alt="Smol Logo"
+            width={48}
+            height={48}
+            className="rounded-full"
           />
-          <h1 className="text-xl font-bold bg-gradient-to-r from-[#39ff14] to-[#a020f0] text-transparent bg-clip-text drop-shadow-[0_0_8px_#39ff14]">Wonderland Vibe Coding Studio Powered by $Alice token</h1>
+          <h1 className="text-xl font-bold bg-gradient-to-r from-[#39ff14] to-[#a020f0] text-transparent bg-clip-text drop-shadow-[0_0_8px_#39ff14]">VIBE CODING STUDIO</h1>
         </Link>
       </div>
       <div className="flex items-center gap-1 md:gap-4">
