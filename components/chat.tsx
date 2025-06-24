@@ -4,6 +4,7 @@ import { ExecutionResult } from '@/lib/types'
 import { DeepPartial } from 'ai'
 import { LoaderIcon, Terminal } from 'lucide-react'
 import { useEffect } from 'react'
+import { CodeView } from './code-view'
 
 export function Chat({
   messages,
@@ -31,12 +32,23 @@ export function Chat({
     >
       {messages.map((message: Message, index: number) => (
         <div
-          className={`flex flex-col px-4 shadow-sm whitespace-pre-wrap ${message.role !== 'user' ? 'bg-accent dark:bg-white/5 border text-accent-foreground dark:text-muted-foreground py-4 rounded-2xl gap-4 w-full' : 'bg-gradient-to-b from-black/5 to-black/10 dark:from-black/30 dark:to-black/50 py-2 rounded-xl gap-2 w-fit'} font-serif`}
+          className={`flex flex-col px-4 shadow-sm whitespace-pre-wrap ${
+            message.role !== 'user'
+              ? 'bg-accent dark:bg-white/5 border text-accent-foreground dark:text-muted-foreground py-4 rounded-2xl gap-4 w-full'
+              : 'bg-gradient-to-b from-black/5 to-black/10 dark:from-black/30 dark:to-black/50 py-2 rounded-xl gap-2 w-fit'
+          } font-serif`}
           key={index}
         >
           {message.content.map((content, id) => {
             if (content.type === 'text') {
-              return content.text
+              return <div key={id} className="text-wrap">{content.text}</div>
+            }
+            if (content.type === 'code') {
+              return (
+                <div key={id} className="w-full">
+                  <CodeView code={content.text} lang="typescript" />
+                </div>
+              )
             }
             if (content.type === 'image') {
               return (
@@ -48,6 +60,7 @@ export function Chat({
                 />
               )
             }
+            return null
           })}
           {message.object && (
             <div

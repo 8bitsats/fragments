@@ -163,6 +163,9 @@ export function ChatInput({
       // 1. Fetch ephemeral OpenAI token from backend
       const tokenResponse = await fetch('/api/openai-ephemeral-token')
       const data = await tokenResponse.json()
+      if (!data.client_secret?.value) {
+        throw new Error('Failed to get OpenAI token')
+      }
       const EPHEMERAL_KEY = data.client_secret.value
 
       // 2. Create peer connection
@@ -187,22 +190,80 @@ export function ChatInput({
       // 5. Set up data channel for events
       const dc = pc.createDataChannel('oai-events')
       dataChannelRef.current = dc
+      
+      // Handle various WebRTC events
       dc.addEventListener('message', (e) => {
         try {
           const event = JSON.parse(e.data)
-          // Listen for transcript events
+          console.log('Received event:', event)
+
+          // Handle speech detection events
+          if (event.type === 'input_audio_buffer.speech_started') {
+            console.log('Speech started')
+          } else if (event.type === 'input_audio_buffer.speech_stopped') {
+            console.log('Speech stopped')
+          }
+
+          // Handle function call events for code generation
+          if (event.type === 'response.done' && event.response?.output?.[0]?.type === 'function_call') {
+            const functionCall = event.response.output[0]
+            if (functionCall.name === 'generate_code') {
+              const args = JSON.parse(functionCall.arguments)
+              // Create a code block with the generated code
+              const codeBlock = `Language: ${args.language}\n\`\`\`${args.language}\n${args.description}\n\`\`\``;
+              handleInputChange({
+                target: { value: codeBlock },
+                currentTarget: { value: codeBlock },
+              } as React.ChangeEvent<HTMLTextAreaElement>)
+              if (onVoiceSubmit) onVoiceSubmit()
+            }
+          }
+
+          // Handle text transcript events
           if (event.type === 'response.done' && event.response?.output?.[0]?.text) {
-            handleInputChange({
-              target: { value: event.response.output[0].text },
-              currentTarget: { value: event.response.output[0].text },
-            } as React.ChangeEvent<HTMLTextAreaElement>)
+            const text = event.response.output[0].text;
+            // Check if the text contains code blocks
+            if (text.includes('```')) {
+              handleInputChange({
+                target: { value: text },
+                currentTarget: { value: text },
+              } as React.ChangeEvent<HTMLTextAreaElement>)
+            } else {
+              // If no code blocks, wrap it in a code block
+              const codeBlock = `\`\`\`\n${text}\n\`\`\``;
+              handleInputChange({
+                target: { value: codeBlock },
+                currentTarget: { value: codeBlock },
+              } as React.ChangeEvent<HTMLTextAreaElement>)
+            }
             setIsRecording(false)
             stopRecording()
             if (onVoiceSubmit) onVoiceSubmit()
           }
         } catch (err) {
-          // ignore
+          console.error('Error handling WebRTC message:', err)
         }
+      })
+
+      // Handle data channel state
+      dc.addEventListener('open', () => {
+        console.log('Data channel opened')
+        // Send initial session configuration
+        dc.send(JSON.stringify({
+          type: 'session.update',
+          session: {
+            instructions: 'You are a voice-to-code assistant. Convert natural language descriptions into code.',
+            turn_detection: {
+              type: 'semantic_vad',
+              eagerness: 'medium'
+            }
+          }
+        }))
+      })
+
+      dc.addEventListener('close', () => {
+        console.log('Data channel closed')
+        stopRecording()
       })
 
       // 6. Start the session (SDP)
@@ -216,11 +277,18 @@ export function ChatInput({
         headers: {
           Authorization: `Bearer ${EPHEMERAL_KEY}`,
           'Content-Type': 'application/sdp',
+          'OpenAI-Beta': 'realtime=v1'
         },
       })
+
+      if (!sdpResponse.ok) {
+        throw new Error(`Failed to establish WebRTC connection: ${sdpResponse.statusText}`)
+      }
+
       const answer = { type: 'answer' as const, sdp: await sdpResponse.text() }
       await pc.setRemoteDescription(answer)
     } catch (err: any) {
+      console.error('Error starting recording:', err)
       setRecordingError(err.message || 'Failed to start recording')
       setIsRecording(false)
       stopRecording()
@@ -295,6 +363,17 @@ export function ChatInput({
           </button>
         </div>
       )}
+      {recordingError && (
+        <div className="flex items-center p-1.5 text-sm font-medium mx-4 mb-4 rounded-xl bg-red-400/10 text-red-400">
+          <span className="flex-1 px-1.5">{recordingError}</span>
+          <button
+            className="px-2 py-1 rounded-sm bg-red-400/20"
+            onClick={() => setRecordingError(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       <div className="relative">
         <RepoBanner className="absolute bottom-full inset-x-2 translate-y-1 z-0 pb-2" />
         <div
@@ -310,10 +389,27 @@ export function ChatInput({
               type="button"
               aria-label={isRecording ? 'Stop voice input' : 'Start voice input'}
               title={isRecording ? 'Stop voice input' : 'Start voice input'}
-              className={`p-2 rounded-full hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary ${isRecording ? 'bg-[#39ff14]/20 animate-pulse' : ''}`}
+              className={`relative p-2 rounded-full hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ${
+                isRecording 
+                  ? 'bg-[#39ff14]/20 ring-2 ring-[#39ff14]' 
+                  : ''
+              }`}
               onClick={isRecording ? stopRecording : startRecording}
+              disabled={isLoading}
             >
-              <MicrophoneIcon className={`text-[#39ff14] drop-shadow-[0_0_6px_#a020f0] ${isRecording ? 'animate-pulse' : ''}`} />
+              <MicrophoneIcon 
+                className={`text-[#39ff14] drop-shadow-[0_0_6px_#a020f0] transition-all duration-200 ${
+                  isRecording 
+                    ? 'animate-pulse scale-110' 
+                    : ''
+                }`} 
+              />
+              {isRecording && (
+                <span className="absolute -top-1 -right-1 w-3 h-3">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-[#39ff14] opacity-75 animate-ping" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#39ff14]" />
+                </span>
+              )}
             </button>
             <button
               type="button"
@@ -335,8 +431,8 @@ export function ChatInput({
             maxRows={5}
             className="text-normal px-3 resize-none ring-0 bg-inherit w-full m-0 outline-none"
             required={true}
-            placeholder="Describe your app..."
-            disabled={isErrored}
+            placeholder={isRecording ? "Listening... Speak your code description" : "Describe your app..."}
+            disabled={isErrored || isRecording}
             value={input}
             onChange={handleInputChange}
             onPaste={isMultiModal ? handlePaste : undefined}

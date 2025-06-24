@@ -1,4 +1,7 @@
 import React, { useState } from 'react'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { LoaderIcon } from 'lucide-react'
 
 export function ImageGenerator() {
   const [prompt, setPrompt] = useState('');
@@ -7,52 +10,101 @@ export function ImageGenerator() {
   const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = async () => {
+    if (!prompt.trim()) return;
+    
     setLoading(true);
     setError(null);
     setImage(null);
-    const response = await fetch('/api/generate-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    });
-    const data = await response.json();
-    setLoading(false);
-    if (data.error) {
-      setError(data.error);
-    } else {
-      setImage(`data:image/png;base64,${data.image}`);
+    
+    try {
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt.trim() }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        setError(data.error);
+      } else if (data.image) {
+        setImage(`data:image/png;base64,${data.image}`);
+      } else {
+        setError('Failed to generate image');
+      }
+    } catch (err) {
+      setError('An error occurred while generating the image');
+      console.error('Image generation error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
+    <div className="w-full space-y-4">
       <div className="flex items-center gap-2">
-        <input
+        <Input
           type="text"
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
           placeholder="Describe your image..."
-          className="border px-2 py-1 rounded w-full"
+          className="flex-1"
+          disabled={loading}
         />
-        <button
+        <Button
           onClick={handleGenerate}
-          disabled={loading || !prompt}
-          className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          title="Generate image from prompt"
+          disabled={loading || !prompt.trim()}
+          variant="outline"
+          size="icon"
+          className="shrink-0"
         >
-          {/* Simple image icon (SVG) */}
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5V7.5A2.25 2.25 0 015.25 5.25h13.5A2.25 2.25 0 0121 7.5v9a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 16.5zm0 0l5.25-5.25a2.25 2.25 0 013.18 0l5.32 5.32M15 11.25a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-          </svg>
-        </button>
+          {loading ? (
+            <LoaderIcon className="h-5 w-5 animate-spin" />
+          ) : (
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              strokeWidth={1.5} 
+              stroke="currentColor" 
+              className="w-5 h-5"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                d="M3 16.5V7.5A2.25 2.25 0 015.25 5.25h13.5A2.25 2.25 0 0121 7.5v9a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 16.5zm0 0l5.25-5.25a2.25 2.25 0 013.18 0l5.32 5.32M15 11.25a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" 
+              />
+            </svg>
+          )}
+        </Button>
       </div>
-      <button onClick={handleGenerate} disabled={loading || !prompt} className="mt-2 px-4 py-2 bg-blue-600 text-white rounded w-full">
-        {loading ? 'Generating...' : 'Generate Image'}
-      </button>
-      {error && <div className="text-red-500 mt-2">{error}</div>}
+      
+      {error && (
+        <div className="text-sm text-red-500 bg-red-100 dark:bg-red-900/20 p-3 rounded-lg">
+          {error}
+        </div>
+      )}
+      
       {image && (
-        <div className="mt-4">
-          <img src={image} alt="Generated" className="max-w-full rounded border" />
+        <div className="relative group">
+          <img 
+            src={image} 
+            alt="Generated" 
+            className="w-full rounded-lg border dark:border-white/10 transition-transform transform hover:scale-[1.02]" 
+          />
+          <Button
+            onClick={() => {
+              const link = document.createElement('a');
+              link.href = image;
+              link.download = `generated-${Date.now()}.png`;
+              link.click();
+            }}
+            variant="secondary"
+            size="sm"
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            Download
+          </Button>
         </div>
       )}
     </div>

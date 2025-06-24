@@ -52,11 +52,13 @@ export async function POST(req: Request) {
     })
   }
 
-  console.log('userID', userID)
-  console.log('teamID', teamID)
-  // console.log('template', template)
-  console.log('model', model)
-  // console.log('config', config)
+  console.log('Request details:', {
+    userID,
+    teamID,
+    modelId: model.id,
+    provider: model.provider,
+    template,
+  })
 
   const { model: modelNameString, apiKey: modelApiKey, ...modelParams } = config
   const modelClient = getModelClient(model, config)
@@ -67,16 +69,28 @@ export async function POST(req: Request) {
       schema,
       system: toPrompt(template),
       messages,
-      maxRetries: 0, // do not retry on errors
+      maxRetries: 2, // Add some retries for transient errors
       ...modelParams,
     })
 
     return stream.toTextStreamResponse()
   } catch (error: any) {
+    console.error('Detailed error:', {
+      error: error.message,
+      cause: error.cause,
+      statusCode: error.statusCode,
+      stack: error.stack,
+    })
+
     const isRateLimitError =
       error && (error.statusCode === 429 || error.message.includes('limit'))
     const isOverloadedError =
-      error && (error.statusCode === 529 || error.statusCode === 503)
+      error && (
+        error.statusCode === 529 || 
+        error.statusCode === 503 || 
+        error.message.includes('overloaded') ||
+        (error.cause && error.cause.type === 'overloaded_error')
+      )
     const isAccessDeniedError =
       error && (error.statusCode === 403 || error.statusCode === 401)
 
@@ -90,8 +104,10 @@ export async function POST(req: Request) {
     }
 
     if (isOverloadedError) {
+      // Try to get a more specific error message
+      const message = error.cause?.message || error.message || 'The provider is currently overloaded'
       return new Response(
-        'The provider is currently unavailable. Please try again later.',
+        `${message}. Please try again in a few moments or switch to a different model.`,
         {
           status: 529,
         },
@@ -107,7 +123,7 @@ export async function POST(req: Request) {
       )
     }
 
-    console.error('Error:', error)
+    console.error('Unexpected error:', error)
 
     return new Response(
       'An unexpected error has occurred. Please try again later.',

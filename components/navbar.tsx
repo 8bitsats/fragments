@@ -65,7 +65,7 @@ export function NavBar({
             height={48}
             className="rounded-full"
           />
-          <h1 className="text-xl font-bold bg-gradient-to-r from-[#39ff14] to-[#a020f0] text-transparent bg-clip-text drop-shadow-[0_0_8px_#39ff14]">VIBE CODING STUDIO</h1>
+          <h1 className="text-xl font-bold bg-gradient-to-r from-[#39ff14] to-[#a020f0] text-transparent bg-clip-text drop-shadow-[0_0_8px_#39ff14]">Gorbagana Ai Vibe Coding Studio Powered by $GOR </h1>
         </Link>
       </div>
       <div className="flex items-center gap-1 md:gap-4">

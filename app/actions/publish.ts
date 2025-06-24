@@ -2,8 +2,8 @@
 
 import { Duration, ms } from '@/lib/duration'
 import { Sandbox } from '@e2b/code-interpreter'
-import { kv } from '@vercel/kv'
 import { customAlphabet } from 'nanoid'
+import { storeUrl } from '@/middleware'
 
 const nanoid = customAlphabet('1234567890abcdef', 7)
 
@@ -26,18 +26,12 @@ export async function publish(
       : {}),
   })
 
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-    const id = nanoid()
-    await kv.set(`fragment:${id}`, url, { px: expiration })
-
-    return {
-      url: process.env.NEXT_PUBLIC_SITE_URL
-        ? `https://${process.env.NEXT_PUBLIC_SITE_URL}/s/${id}`
-        : `/s/${id}`,
-    }
-  }
+  const id = nanoid()
+  storeUrl(id, url)
 
   return {
-    url,
+    url: process.env.NEXT_PUBLIC_SITE_URL
+      ? `https://${process.env.NEXT_PUBLIC_SITE_URL}/s/${id}`
+      : `/s/${id}`,
   }
 }
