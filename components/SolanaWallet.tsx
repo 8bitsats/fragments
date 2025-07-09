@@ -1,6 +1,7 @@
+'use client';
+
 import { useEffect, useState } from 'react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { useSolanaWallets, useSignMessage } from '@privy-io/react-auth/solana';
+import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { Button } from './ui/button';
 import { useToast } from './ui/use-toast';
@@ -8,7 +9,6 @@ import { useToast } from './ui/use-toast';
 export function SolanaWallet() {
   const { login, ready, authenticated } = usePrivy();
   const { wallets } = useSolanaWallets();
-  const { signMessage } = useSignMessage();
   const { toast } = useToast();
   const [balance, setBalance] = useState<number | null>(null);
 
@@ -32,15 +32,10 @@ export function SolanaWallet() {
   };
 
   const handleSignMessage = async () => {
-    if (!solanaWallet) return;
+    if (!solanaWallet || !solanaWallet.signMessage) return;
     try {
       const message = 'Hello from Vibe Coding Studio!';
-      const signatureUint8Array = await signMessage({
-        message: new TextEncoder().encode(message),
-        options: {
-          address: solanaWallet.address
-        }
-      });
+      const signatureUint8Array = await solanaWallet.signMessage(new TextEncoder().encode(message));
       
       toast({
         title: 'Message Signed',

@@ -1,3 +1,5 @@
+'use client';
+
 import { PrivyProvider as BasePrivyProvider } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 
@@ -19,11 +21,9 @@ export function PrivyProvider({ children }: PrivyProviderProps) {
           logo: '/smol.png',
         },
         embeddedWallets: {
-          createOnLogin: 'all',
+          createOnLogin: 'users-without-wallets',
           noPromptOnSignature: false,
         },
-        defaultChain: 'solana:mainnet',
-        supportedChains: ['solana:mainnet', 'solana:devnet'],
         walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
       }}
       onSuccess={() => {

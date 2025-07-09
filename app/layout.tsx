@@ -6,6 +6,12 @@ import Script from 'next/script'
 
 import { Toaster } from '@/components/ui/toaster'
 import { Analytics } from '@vercel/analytics/next'
+import dynamic from 'next/dynamic'
+
+const CollapsibleWidget = dynamic(
+  () => import('@/components/CollapsibleWidget').then(mod => ({ default: mod.CollapsibleWidget })),
+  { ssr: false }
+)
 
 import {
   PostHogProvider,
@@ -42,12 +48,7 @@ export default function RootLayout({
             <Analytics />
             
             {/* ElevenLabs ConvAI Widget */}
-            <div 
-              className="fixed bottom-4 right-4 z-50"
-              dangerouslySetInnerHTML={{
-                __html: '<elevenlabs-convai agent-id="agent_01jy0nxqsxe09t553eh8zh3q54"></elevenlabs-convai>'
-              }}
-            />
+            <CollapsibleWidget />
             
             <Script 
               src="https://unpkg.com/@elevenlabs/convai-widget-embed" 
