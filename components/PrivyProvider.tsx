@@ -1,14 +1,12 @@
 'use client';
 
 import { PrivyProvider as BasePrivyProvider } from '@privy-io/react-auth';
-import { useRouter } from 'next/navigation';
 
 interface PrivyProviderProps {
   children: React.ReactNode;
 }
 
 export function PrivyProvider({ children }: PrivyProviderProps) {
-  const router = useRouter();
 
   return (
     <BasePrivyProvider
@@ -22,12 +20,8 @@ export function PrivyProvider({ children }: PrivyProviderProps) {
         },
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
-          noPromptOnSignature: false,
         },
         walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-      }}
-      onSuccess={() => {
-        router.push('/');
       }}
     >
       {children}
