@@ -24,7 +24,7 @@ const nextConfig = {
   },
   reactStrictMode: true,
   images: {
-    domains: ['localhost', 'vwirsyxjrbobhkoucnvd.supabase.co'],
+    domains: ['localhost', 'vwirsyxjrbobhkoucnvd.supabase.co', 'guzlanuvzfgcekmupcrx.supabase.co'],
   },
   // Skip trailing slash redirect for PostHog
   skipTrailingSlashRedirect: true,
