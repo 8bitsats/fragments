@@ -28,6 +28,9 @@ import {
 } from '../tools/memoryTool.js';
 import { WebSearchTool } from '../tools/web-search.js';
 import { GeminiImageGenerationTool, ImagenGenerationTool } from '../tools/image-generation.js';
+import { EnhancedCodeExecutionTool } from '../tools/enhanced-code-execution.js';
+import { ThinkingFunctionCallerTool } from '../tools/thinking-function-caller.js';
+import { StructuredOutputTool } from '../tools/structured-output.js';
 import { GeminiClient } from '../core/client.js';
 import { FileDiscoveryService } from '../services/fileDiscoveryService.js';
 import { GitService } from '../services/gitService.js';
@@ -548,6 +551,9 @@ export class Config {
     registerCoreTool(WebSearchTool, this);
     registerCoreTool(GeminiImageGenerationTool, this);
     registerCoreTool(ImagenGenerationTool, this);
+    registerCoreTool(EnhancedCodeExecutionTool, this);
+    registerCoreTool(ThinkingFunctionCallerTool, this);
+    registerCoreTool(StructuredOutputTool, this);
 
     await registry.discoverTools();
     return registry;
