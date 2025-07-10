@@ -8,17 +8,6 @@ import {
   Metaplex,
 } from '@metaplex-foundation/js'
 import {
-  createNft,
-  mplCore,
-  ruleSet,
-} from '@metaplex-foundation/mpl-core'
-import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata'
-import {
-  keypairIdentity as umiKeypairIdentity,
-  publicKey,
-} from '@metaplex-foundation/umi'
-import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
-import {
   Connection,
   Keypair,
   LAMPORTS_PER_SOL,
@@ -56,60 +45,9 @@ const getPayerKeypair = () => {
 }
 
 async function mintMetaplexCoreNFT(params: MintNFTRequest) {
-  const { metadataUrl, walletPublicKey, network, royalties, mutable } = params
-  
-  // Initialize UMI for Metaplex Core
-  const umi = createUmi(getConnection(network).rpcEndpoint)
-    .use(mplCore())
-    .use(mplTokenMetadata())
-  
-  const payerKeypair = getPayerKeypair()
-  const umiKeypair = umi.ecdsa.createKeypairFromSecretKey(payerKeypair.secretKey)
-  umi.use(umiKeypairIdentity(umiKeypair))
-  
-  // Generate mint keypair
-  const mint = umi.ecdsa.generateKeypair()
-  
-  // Fetch metadata from URL
-  const metadataResponse = await fetch(metadataUrl)
-  if (!metadataResponse.ok) {
-    throw new Error('Failed to fetch metadata from provided URL')
-  }
-  const metadata = await metadataResponse.json()
-  
-  // Create NFT using Metaplex Core
-  const transaction = await createNft(umi, {
-    mint,
-    name: metadata.name,
-    uri: metadataUrl,
-    sellerFeeBasisPoints: royalties * 100, // Convert percentage to basis points
-    collection: params.collection ? publicKey(params.collection) : undefined,
-    authority: umi.identity,
-    owner: publicKey(walletPublicKey),
-    updateAuthority: mutable ? umi.identity : undefined,
-    plugins: [
-      {
-        type: 'Royalties',
-        basisPoints: royalties * 100,
-        creators: [
-          {
-            address: publicKey(walletPublicKey),
-            percentage: 100,
-          },
-        ],
-        ruleSet: ruleSet('None'), // No rule set
-      },
-    ],
-  })
-  
-  // Send and confirm transaction
-  const result = await transaction.sendAndConfirm(umi)
-  
-  return {
-    mintAddress: mint.publicKey.toString(),
-    signature: result.signature.toString(),
-    network
-  }
+  // For now, fall back to legacy NFT creation
+  // Metaplex Core implementation can be added later when the API is more stable
+  return await mintLegacyNFT(params)
 }
 
 async function mintLegacyNFT(params: MintNFTRequest) {
