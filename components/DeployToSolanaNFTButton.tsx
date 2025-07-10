@@ -1,7 +1,27 @@
-import React, { useState, useCallback } from 'react'
+import React, {
+  useCallback,
+  useState,
+} from 'react'
+
+import {
+  Check,
+  LoaderIcon,
+  Upload,
+  Wallet,
+} from 'lucide-react'
+
+import { useWallet } from '@solana/wallet-adapter-react'
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+
+import { Badge } from './ui/badge'
 import { Button } from './ui/button'
-import { LoaderIcon, Wallet, Upload, Check, AlertCircle } from 'lucide-react'
-import { useToast } from './ui/use-toast'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from './ui/card'
 import {
   Dialog,
   DialogContent,
@@ -12,13 +32,16 @@ import {
 } from './ui/dialog'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import { Textarea } from './ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select'
 import { Switch } from './ui/switch'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import { Badge } from './ui/badge'
-import { useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import { Textarea } from './ui/textarea'
+import { useToast } from './ui/use-toast'
 
 interface NFTMetadata {
   name: string
@@ -42,9 +65,15 @@ interface NFTMetadata {
 interface DeploymentOptions {
   network: 'devnet' | 'mainnet-beta'
   useMetaplexCore: boolean
+  useProgrammableNFT: boolean
   royalties: number
   mutable: boolean
   collection?: string
+  ruleSet?: string
+  creators: Array<{
+    address: string
+    share: number
+  }>
 }
 
 export function DeployToSolanaNFTButton({ 
@@ -79,8 +108,10 @@ export function DeployToSolanaNFTButton({
   const [deploymentOptions, setDeploymentOptions] = useState<DeploymentOptions>({
     network: 'devnet',
     useMetaplexCore: true,
+    useProgrammableNFT: false,
     royalties: 5,
-    mutable: true
+    mutable: true,
+    creators: []
   })
   
   const [uploadedFiles, setUploadedFiles] = useState<{
@@ -152,22 +183,48 @@ export function DeployToSolanaNFTButton({
     }))
   }, [])
 
-  const uploadToArweave = async (data: any): Promise<string> => {
+  const addCreator = useCallback(() => {
+    setDeploymentOptions(prev => ({
+      ...prev,
+      creators: [...prev.creators, { address: '', share: 0 }]
+    }))
+  }, [])
+
+  const updateCreator = useCallback((index: number, field: 'address' | 'share', value: string | number) => {
+    setDeploymentOptions(prev => ({
+      ...prev,
+      creators: prev.creators.map((creator, i) => 
+        i === index ? { ...creator, [field]: value } : creator
+      )
+    }))
+  }, [])
+
+  const removeCreator = useCallback((index: number) => {
+    setDeploymentOptions(prev => ({
+      ...prev,
+      creators: prev.creators.filter((_, i) => i !== index)
+    }))
+  }, [])
+
+  const uploadToLighthouse = async (data: any): Promise<string> => {
     try {
-      const response = await fetch('/api/upload-to-arweave', {
+      const response = await fetch('/api/upload-to-lighthouse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          data,
+          type: 'json'
+        })
       })
       
       if (!response.ok) {
-        throw new Error('Failed to upload to Arweave')
+        throw new Error('Failed to upload to Lighthouse')
       }
       
       const result = await response.json()
       return result.url
     } catch (error) {
-      console.error('Arweave upload error:', error)
+      console.error('Lighthouse upload error:', error)
       throw error
     }
   }
@@ -200,7 +257,7 @@ export function DeployToSolanaNFTButton({
         type: 'solana-app-nft'
       }
 
-      const appUrl = await uploadToArweave(appBundle)
+      const appUrl = await uploadToLighthouse(appBundle)
       
       // Update metadata with app URL
       const finalMetadata = {
@@ -219,8 +276,8 @@ export function DeployToSolanaNFTButton({
         }
       }
 
-      // Step 2: Upload metadata to Arweave
-      const metadataUrl = await uploadToArweave(finalMetadata)
+      // Step 2: Upload metadata to Lighthouse
+      const metadataUrl = await uploadToLighthouse(finalMetadata)
       
       setDeploymentStep('mint')
       
@@ -238,9 +295,12 @@ export function DeployToSolanaNFTButton({
           walletPublicKey: publicKey.toString(),
           network: deploymentOptions.network,
           useMetaplexCore: deploymentOptions.useMetaplexCore,
+          useProgrammableNFT: deploymentOptions.useProgrammableNFT,
           royalties: deploymentOptions.royalties,
           mutable: deploymentOptions.mutable,
-          collection: deploymentOptions.collection
+          collection: deploymentOptions.collection,
+          ruleSet: deploymentOptions.ruleSet,
+          creators: deploymentOptions.creators.length > 0 ? deploymentOptions.creators : undefined
         })
       })
 
@@ -548,6 +608,39 @@ export function DeployToSolanaNFTButton({
 
                 <div className="flex items-center justify-between">
                   <div>
+                    <Label htmlFor="programmable-nft">Programmable NFT (pNFT)</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable royalty enforcement and transfer restrictions
+                    </p>
+                  </div>
+                  <Switch
+                    id="programmable-nft"
+                    checked={deploymentOptions.useProgrammableNFT}
+                    onCheckedChange={(checked) =>
+                      setDeploymentOptions(prev => ({ ...prev, useProgrammableNFT: checked }))
+                    }
+                  />
+                </div>
+
+                {deploymentOptions.useProgrammableNFT && (
+                  <div>
+                    <Label htmlFor="ruleSet">Rule Set (Optional)</Label>
+                    <Input
+                      id="ruleSet"
+                      value={deploymentOptions.ruleSet || ''}
+                      onChange={(e) =>
+                        setDeploymentOptions(prev => ({ ...prev, ruleSet: e.target.value }))
+                      }
+                      placeholder="Enter custom rule set address (leave empty for default)"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Leave empty to use Metaplex&apos;s default royalty enforcement rules
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <div>
                     <Label htmlFor="mutable">Mutable Metadata</Label>
                     <p className="text-sm text-muted-foreground">
                       Allow metadata to be updated after minting
@@ -560,6 +653,53 @@ export function DeployToSolanaNFTButton({
                       setDeploymentOptions(prev => ({ ...prev, mutable: checked }))
                     }
                   />
+                </div>
+
+                {/* Creators Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label>Creators (Optional)</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addCreator}>
+                      Add Creator
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Add multiple creators to share royalties. Total shares must equal 100%.
+                  </p>
+                  <div className="space-y-2">
+                    {deploymentOptions.creators.map((creator, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input
+                          placeholder="Creator wallet address"
+                          value={creator.address}
+                          onChange={(e) => updateCreator(index, 'address', e.target.value)}
+                          className="flex-1"
+                        />
+                        <Input
+                          placeholder="Share %"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={creator.share}
+                          onChange={(e) => updateCreator(index, 'share', parseInt(e.target.value) || 0)}
+                          className="w-20"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeCreator(index)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                    {deploymentOptions.creators.length > 0 && (
+                      <div className="text-sm text-muted-foreground">
+                        Total: {deploymentOptions.creators.reduce((sum, creator) => sum + creator.share, 0)}%
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

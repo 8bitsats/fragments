@@ -4,9 +4,11 @@ import {
 } from 'next/server'
 
 import {
+  bundlrStorage,
   keypairIdentity,
   Metaplex,
 } from '@metaplex-foundation/js'
+import { TokenStandard } from '@metaplex-foundation/mpl-token-metadata'
 import {
   Connection,
   Keypair,
@@ -21,9 +23,15 @@ interface MintNFTRequest {
   walletPublicKey: string
   network: 'devnet' | 'mainnet-beta'
   useMetaplexCore: boolean
+  useProgrammableNFT: boolean
   royalties: number
   mutable: boolean
   collection?: string
+  ruleSet?: string
+  creators?: Array<{
+    address: string
+    share: number
+  }>
 }
 
 const getConnection = (network: string) => {
@@ -42,6 +50,152 @@ const getPayerKeypair = () => {
   
   const privateKeyArray = JSON.parse(privateKeyString)
   return Keypair.fromSecretKey(new Uint8Array(privateKeyArray))
+}
+
+// Function to mint Programmable NFTs with royalty enforcement
+async function mintProgrammableNFT(params: MintNFTRequest) {
+  const { metadataUrl, walletPublicKey, network, royalties, mutable, creators, ruleSet } = params
+  
+  const connection = getConnection(network)
+  const payerKeypair = getPayerKeypair()
+  
+  // Initialize Metaplex with bundlr storage for better reliability
+  const metaplex = Metaplex.make(connection)
+    .use(keypairIdentity(payerKeypair))
+    .use(bundlrStorage({
+      address: network === 'mainnet-beta' ? 'https://node1.bundlr.network' : 'https://devnet.bundlr.network',
+      providerUrl: connection.rpcEndpoint,
+      timeout: 60000,
+    }))
+  
+  // Fetch metadata from URL
+  const metadataResponse = await fetch(metadataUrl)
+  if (!metadataResponse.ok) {
+    throw new Error('Failed to fetch metadata from provided URL')
+  }
+  const metadata = await metadataResponse.json()
+  
+  // Prepare creators array - use provided creators or default to wallet
+  const nftCreators = creators && creators.length > 0 
+    ? creators.map(creator => ({
+        address: new PublicKey(creator.address),
+        share: creator.share,
+      }))
+    : [
+        {
+          address: new PublicKey(walletPublicKey),
+          share: 100,
+        },
+      ]
+  
+  // Validate creators shares sum to 100
+  const totalShare = nftCreators.reduce((sum, creator) => sum + creator.share, 0)
+  if (totalShare !== 100) {
+    throw new Error('Creator shares must sum to 100')
+  }
+
+  console.log('Minting Programmable NFT with the following parameters:')
+  console.log('- Name:', metadata.name)
+  console.log('- Symbol:', metadata.symbol || 'PNFT')
+  console.log('- Royalties:', royalties, '%')
+  console.log('- Creators:', nftCreators.length)
+  console.log('- Mutable:', mutable)
+  console.log('- Rule Set:', ruleSet || 'Default (null)')
+
+  try {
+    // Create the transaction builder for Programmable NFT
+    const transactionBuilder = await metaplex
+      .nfts()
+      .builders()
+      .create({
+        uri: metadataUrl,
+        name: metadata.name,
+        sellerFeeBasisPoints: royalties * 100, // Convert percentage to basis points
+        symbol: metadata.symbol || 'PNFT',
+        creators: nftCreators,
+        isMutable: mutable,
+        isCollection: false,
+        tokenStandard: TokenStandard.ProgrammableNonFungible, // This makes it a pNFT!
+        ruleSet: ruleSet ? new PublicKey(ruleSet) : null, // Custom rule set or default
+        collection: params.collection ? new PublicKey(params.collection) : undefined,
+      })
+
+    // Send and confirm the transaction
+    const { signature, confirmResponse } = await metaplex.rpc().sendAndConfirmTransaction(transactionBuilder)
+    
+    if (confirmResponse.value.err) {
+      throw new Error('Failed to confirm transaction')
+    }
+
+    // Get the mint address from the transaction context
+    const { mintAddress } = transactionBuilder.getContext()
+    
+    console.log('✅ Programmable NFT minted successfully!')
+    console.log('📍 Mint Address:', mintAddress.toString())
+    console.log('🔗 Transaction:', signature)
+
+    return {
+      mintAddress: mintAddress.toString(),
+      signature: signature,
+      network,
+      tokenStandard: 'ProgrammableNonFungible',
+      ruleSet: ruleSet || null,
+    }
+
+  } catch (error) {
+    console.error('Error minting Programmable NFT:', error)
+    throw error
+  }
+}
+
+// Function to transfer Programmable NFTs (with rule enforcement)
+async function transferProgrammableNFT(
+  mintAddress: string,
+  fromWallet: string,
+  toWallet: string,
+  network: string
+) {
+  const connection = getConnection(network)
+  const payerKeypair = getPayerKeypair()
+  
+  const metaplex = Metaplex.make(connection)
+    .use(keypairIdentity(payerKeypair))
+  
+  try {
+    // Build transfer transaction for Programmable NFT
+    const transferTransactionBuilder = await metaplex.nfts().builders().transfer({
+      nftOrSft: {
+        address: new PublicKey(mintAddress),
+        tokenStandard: TokenStandard.ProgrammableNonFungible
+      },
+      authority: payerKeypair,
+      fromOwner: new PublicKey(fromWallet),
+      toOwner: new PublicKey(toWallet),
+    })
+    
+    // Send and confirm the transfer
+    const { signature: transferSignature, confirmResponse } = await metaplex
+      .rpc()
+      .sendAndConfirmTransaction(transferTransactionBuilder, { commitment: 'finalized' })
+    
+    if (confirmResponse.value.err) {
+      throw new Error('Failed to confirm transfer transaction')
+    }
+    
+    console.log('✅ Programmable NFT transferred successfully!')
+    console.log('🔗 Transfer Transaction:', transferSignature)
+    
+    return {
+      signature: transferSignature,
+      from: fromWallet,
+      to: toWallet,
+      mintAddress,
+    }
+    
+  } catch (error) {
+    console.error('Error transferring Programmable NFT:', error)
+    throw error
+  }
 }
 
 async function mintMetaplexCoreNFT(params: MintNFTRequest) {
@@ -86,7 +240,9 @@ async function mintLegacyNFT(params: MintNFTRequest) {
   return {
     mintAddress: nft.address.toString(),
     signature: nft.metadataAddress.toString(),
-    network
+    network,
+    tokenStandard: 'NonFungible',
+    ruleSet: null,
   }
 }
 
@@ -128,6 +284,29 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Validate creators if provided
+    if (params.creators && params.creators.length > 0) {
+      const totalShare = params.creators.reduce((sum, creator) => sum + creator.share, 0)
+      if (totalShare !== 100) {
+        return NextResponse.json(
+          { error: 'Creator shares must sum to 100' },
+          { status: 400 }
+        )
+      }
+      
+      // Validate creator addresses
+      for (const creator of params.creators) {
+        try {
+          new PublicKey(creator.address)
+        } catch (error) {
+          return NextResponse.json(
+            { error: `Invalid creator address: ${creator.address}` },
+            { status: 400 }
+          )
+        }
+      }
+    }
+    
     // Check if payer has sufficient balance (for devnet, we can skip this)
     if (params.network === 'mainnet-beta') {
       const connection = getConnection(params.network)
@@ -144,7 +323,10 @@ export async function POST(request: NextRequest) {
     
     let result
     
-    if (params.useMetaplexCore) {
+    // Choose minting method based on parameters
+    if (params.useProgrammableNFT) {
+      result = await mintProgrammableNFT(params)
+    } else if (params.useMetaplexCore) {
       result = await mintMetaplexCoreNFT(params)
     } else {
       result = await mintLegacyNFT(params)
@@ -159,8 +341,12 @@ export async function POST(request: NextRequest) {
       magicEdenUrl: `https://magiceden.io/item-details/${result.mintAddress}`,
       metadata: {
         useMetaplexCore: params.useMetaplexCore,
+        useProgrammableNFT: params.useProgrammableNFT,
         royalties: params.royalties,
-        mutable: params.mutable
+        mutable: params.mutable,
+        tokenStandard: result.tokenStandard,
+        ruleSet: result.ruleSet || null,
+        creatorsCount: params.creators?.length || 1,
       }
     })
     
@@ -186,6 +372,20 @@ export async function POST(request: NextRequest) {
       if (error.message.includes('network')) {
         return NextResponse.json(
           { error: 'Network connection failed. Please try again.' },
+          { status: 503 }
+        )
+      }
+      
+      if (error.message.includes('Creator shares')) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 400 }
+        )
+      }
+      
+      if (error.message.includes('Failed to confirm')) {
+        return NextResponse.json(
+          { error: 'Transaction failed to confirm. Please try again.' },
           { status: 503 }
         )
       }
@@ -232,7 +432,15 @@ export async function GET(request: NextRequest) {
       payerPublicKey: payerKeypair.publicKey.toString(),
       estimatedFee: feeEstimate?.value || 0,
       feeInSOL: (feeEstimate?.value || 0) / LAMPORTS_PER_SOL,
-      blockhash
+      blockhash,
+      supportedFeatures: {
+        legacyNFT: true,
+        programmableNFT: true,
+        metaplexCore: true,
+        royaltyEnforcement: true,
+        customRuleSets: true,
+        multipleCreators: true,
+      }
     })
     
   } catch (error) {

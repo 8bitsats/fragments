@@ -1,0 +1,29 @@
+# Dependencies
+*/node_modules
+**/target
+
+# Generated package imports
+**/client/package.ts
+
+# Generated TS files
+**/generated.ts
+
+# Production
+*/build
+
+# Misc
+*/.env
+*/deploy.sh
+
+*/npm-debug.log*
+*/yarn-debug.log*
+*/yarn-error.log*
+
+# Server
+server/mongodb
+server/programs/*
+!server/programs/Cargo.*
+!server/programs/default
+
+# WASM
+**/www

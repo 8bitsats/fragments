@@ -349,7 +349,7 @@ export function AIArtStudio() {
                         <SelectValue placeholder="Choose a style (optional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No Style</SelectItem>
+                        <SelectItem value="none">No Style</SelectItem>
                         {STYLE_PRESETS.map((style) => (
                           <SelectItem key={style} value={style}>
                             {style}
