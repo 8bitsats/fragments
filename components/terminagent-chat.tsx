@@ -147,7 +147,7 @@ Remember: You're not just an AI, you're a coding buddy with serious vibe energy!
       })
 
       const chat = model.startChat({
-        history: messages.slice(-10).map(msg => ({
+        history: messages.slice(-10).filter(msg => msg.role !== 'assistant' || messages.indexOf(msg) > 0).map(msg => ({
           role: msg.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: msg.content }]
         }))
