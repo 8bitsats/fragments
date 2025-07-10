@@ -4,7 +4,9 @@ import { useState } from 'react'
 
 import { AIArtStudio } from '@/components/AIArtStudio'
 import { ViewType } from '@/components/auth'
+import { ComputerUseAgent } from '@/components/ComputerUseAgent'
 import { FluxImageGenerator } from '@/components/FluxImageGenerator'
+import { MultiModelAIStudio } from '@/components/MultiModelAIStudio'
 import { NavBar } from '@/components/navbar'
 import { SolanaWallet } from '@/components/SolanaWallet'
 import { TerminAgentChat } from '@/components/terminagent-chat'
@@ -19,7 +21,7 @@ import { useAuth } from '@/lib/auth'
 export default function Home() {
   const [isAuthDialogOpen, setAuthDialog] = useState(false);
   const [authView, setAuthView] = useState<ViewType>('sign_in');
-  const [activeTab, setActiveTab] = useState('terminagent');
+  const [activeTab, setActiveTab] = useState('multi-studio');
   const { session } = useAuth(setAuthDialog, setAuthView);
 
   const handleSocialClick = (target: 'github' | 'x' | 'discord') => {
@@ -62,6 +64,18 @@ export default function Home() {
               <h3 className="text-sm font-medium text-muted-foreground">Quick Access</h3>
               <div className="grid grid-cols-1 gap-2">
                 <button
+                  onClick={() => setActiveTab('multi-studio')}
+                  className={`p-3 rounded-lg text-left transition-all ${
+                    activeTab === 'multi-studio' 
+                      ? 'bg-purple-100 dark:bg-purple-900 border-purple-300 dark:border-purple-700' 
+                      : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  } border`}
+                >
+                  <div className="font-medium">🌟 Multi-Model Studio</div>
+                  <div className="text-xs text-muted-foreground">Unified AI Experience</div>
+                </button>
+                
+                <button
                   onClick={() => setActiveTab('terminagent')}
                   className={`p-3 rounded-lg text-left transition-all ${
                     activeTab === 'terminagent' 
@@ -71,6 +85,18 @@ export default function Home() {
                 >
                   <div className="font-medium">🤖 TerminAgent</div>
                   <div className="text-xs text-muted-foreground">AI Terminal Assistant</div>
+                </button>
+                
+                <button
+                  onClick={() => setActiveTab('computer-use')}
+                  className={`p-3 rounded-lg text-left transition-all ${
+                    activeTab === 'computer-use' 
+                      ? 'bg-purple-100 dark:bg-purple-900 border-purple-300 dark:border-purple-700' 
+                      : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  } border`}
+                >
+                  <div className="font-medium">🖥️ Computer Use</div>
+                  <div className="text-xs text-muted-foreground">Desktop Automation</div>
                 </button>
                 
                 <button
@@ -103,9 +129,15 @@ export default function Home() {
         
         <div className="flex-1 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-3 m-4 mb-0">
+            <TabsList className="grid w-full grid-cols-5 m-4 mb-0">
+              <TabsTrigger value="multi-studio" className="flex items-center gap-2">
+                🌟 Multi-Studio
+              </TabsTrigger>
               <TabsTrigger value="terminagent" className="flex items-center gap-2">
                 🤖 TerminAgent
+              </TabsTrigger>
+              <TabsTrigger value="computer-use" className="flex items-center gap-2">
+                🖥️ Computer Use
               </TabsTrigger>
               <TabsTrigger value="art-studio" className="flex items-center gap-2">
                 🎨 AI Art Studio
@@ -115,9 +147,21 @@ export default function Home() {
               </TabsTrigger>
             </TabsList>
 
+            <TabsContent value="multi-studio" className="flex-1 m-4 mt-0 overflow-auto">
+              <div className="h-full rounded-lg border bg-white dark:bg-gray-900 overflow-auto">
+                <MultiModelAIStudio />
+              </div>
+            </TabsContent>
+
             <TabsContent value="terminagent" className="flex-1 m-4 mt-0">
               <div className="h-full rounded-lg border bg-white dark:bg-gray-900 overflow-hidden">
                 <TerminAgentChat />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="computer-use" className="flex-1 m-4 mt-0 overflow-auto">
+              <div className="h-full rounded-lg border bg-white dark:bg-gray-900 overflow-auto">
+                <ComputerUseAgent />
               </div>
             </TabsContent>
 

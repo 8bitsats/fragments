@@ -82,50 +82,50 @@ export function FluxImageGenerator() {
   const [selectedStyle, setSelectedStyle] = useState('')
   const { toast } = useToast()
 
-  const generateImageWithFlux = async (
+  const generateImageWithUnifiedAPI = async (
     prompt: string,
-    params: GenerationParams
+    params: GenerationParams,
+    provider: 'flux' | 'openai' = 'flux'
   ): Promise<string> => {
-    const fluxEndpoint = "https://cp8xwwqdjstqaori.us-east-1.aws.endpoints.huggingface.cloud"
-    
     try {
-      const response = await fetch(fluxEndpoint, {
-        headers: { 
-          "Accept": "image/png",
-          "Content-Type": "application/json"
+      const response = await fetch('/api/openai-unified', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        method: "POST",
         body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
+          provider,
+          model: provider === 'openai' ? 'dall-e-3' : 'flux-schnell',
+          messages: [{ role: 'user', content: prompt }],
+          image_generation_params: {
+            prompt,
             width: params.width,
             height: params.height,
-            num_inference_steps: params.num_inference_steps,
-            guidance_scale: params.guidance_scale,
-            ...(params.negative_prompt && { negative_prompt: params.negative_prompt }),
-            ...(params.seed && { seed: params.seed })
+            steps: params.num_inference_steps,
+            guidance: params.guidance_scale,
+            negative_prompt: params.negative_prompt,
+            seed: params.seed
           }
         }),
       })
 
       if (!response.ok) {
-        throw new Error(`FLUX API error: ${response.status}`)
+        throw new Error(`API error: ${response.status}`)
       }
 
-      const imageBlob = await response.blob()
+      const result = await response.json()
       
-      // Convert blob to base64
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-          const result = reader.result as string
-          resolve(result)
-        }
-        reader.onerror = reject
-        reader.readAsDataURL(imageBlob)
-      })
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      if (result.images && result.images.length > 0) {
+        return result.images[0].url
+      }
+
+      throw new Error('No image returned from API')
     } catch (error) {
-      console.error('FLUX generation error:', error)
+      console.error('Image generation error:', error)
       throw new Error(`Failed to generate image: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -156,7 +156,7 @@ export function FluxImageGenerator() {
         seed: seed ? parseInt(seed) : undefined
       }
 
-      const imageUrl = await generateImageWithFlux(enhancedPrompt, params)
+      const imageUrl = await generateImageWithUnifiedAPI(enhancedPrompt, params)
 
       const newImage: GeneratedImage = {
         url: imageUrl,

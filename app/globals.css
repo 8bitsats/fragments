@@ -59,6 +59,135 @@
   animation: gradient-shift 3s ease infinite;
 }
 
+/* Image reveal animation classes */
+.image-reveal {
+  animation: revealImage 2s ease-out forwards;
+}
+
+.image-blur-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(139, 92, 246, 0.1), rgba(236, 72, 153, 0.1));
+  backdrop-filter: blur(10px);
+  animation: fadeOut 2s ease-out 1s forwards;
+  pointer-events: none;
+}
+
+/* Terminal typing animation */
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes blink {
+  0%, 50% { border-color: transparent; }
+  51%, 100% { border-color: #8b5cf6; }
+}
+
+.typing-animation {
+  overflow: hidden;
+  border-right: 2px solid #8b5cf6;
+  white-space: nowrap;
+  animation: typing 2s steps(40, end), blink 1s step-end infinite;
+}
+
+/* Floating particles animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-10px) rotate(120deg); }
+  66% { transform: translateY(5px) rotate(240deg); }
+}
+
+.floating-particle {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Matrix-style code rain effect */
+@keyframes matrix-rain {
+  0% { transform: translateY(-100vh); opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+.matrix-rain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.matrix-rain::before {
+  content: "01001000 01100101 01101100 01101100 01101111 00100000 01010111 01101111 01110010 01101100 01100100";
+  position: absolute;
+  top: -100vh;
+  left: 0;
+  width: 100%;
+  height: 200vh;
+  color: rgba(139, 92, 246, 0.1);
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 20px;
+  animation: matrix-rain 10s linear infinite;
+}
+
+/* Solana-themed animations */
+@keyframes solana-glow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(220, 38, 127, 0.5);
+    border-color: rgba(220, 38, 127, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(220, 38, 127, 0.8), 0 0 30px rgba(220, 38, 127, 0.6);
+    border-color: rgba(220, 38, 127, 0.8);
+  }
+}
+
+.solana-glow {
+  animation: solana-glow 2s ease-in-out infinite;
+}
+
+/* AI thinking animation */
+@keyframes ai-thinking {
+  0%, 20% { opacity: 0.3; }
+  50% { opacity: 1; }
+  80%, 100% { opacity: 0.3; }
+}
+
+.ai-thinking {
+  animation: ai-thinking 1.5s ease-in-out infinite;
+}
+
+/* Holographic effect */
+@keyframes hologram {
+  0% { 
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+  50% { 
+    background-position: 100% 50%;
+    filter: hue-rotate(180deg);
+  }
+  100% { 
+    background-position: 0% 50%;
+    filter: hue-rotate(360deg);
+  }
+}
+
+.holographic {
+  background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #ff00ff);
+  background-size: 400% 400%;
+  animation: hologram 3s ease infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
