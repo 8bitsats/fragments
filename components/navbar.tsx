@@ -4,7 +4,6 @@ import {
   Trash,
   Undo,
 } from 'lucide-react'
-import Image from 'next/image'
 import Link from 'next/link'
 
 import {
@@ -59,14 +58,13 @@ export function NavBar({
     <nav className="w-full flex bg-background py-4">
       <div className="flex flex-1 items-center justify-center">
         <Link href="/" className="flex items-center gap-2" target="_blank" rel="noopener noreferrer">
-          <Image
-            src="/smol.png"
-            alt="Smol Logo"
+          <Logo
+            style="terminagent"
             width={48}
             height={48}
             className="rounded-full"
           />
-          <h1 className="text-xl font-bold bg-gradient-to-r from-[#39ff14] to-[#a020f0] text-transparent bg-clip-text drop-shadow-[0_0_8px_#39ff14]">Solana Terminals Ai Vibe Coding Studio Powered by Deep Solana</h1>
+          <h1 className="text-xl font-bold bg-gradient-to-r from-[#39ff14] to-[#a020f0] text-transparent bg-clip-text drop-shadow-[0_0_8px_#39ff14]">TerminAgent - Vibe Coding Studio</h1>
         </Link>
       </div>
       <div className="flex items-center gap-1 md:gap-4">

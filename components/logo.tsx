@@ -1,12 +1,38 @@
-export type LogoStyle = 'e2b' | 'fragments'
+import Image from 'next/image'
+
+export type LogoStyle = 'e2b' | 'fragments' | 'terminagent'
+
+interface LogoProps {
+  style?: LogoStyle
+  className?: string
+  width?: number
+  height?: number
+}
 
 export default function Logo({
   style = 'e2b',
-  ...props
-}: { style?: LogoStyle } & React.SVGProps<SVGSVGElement>) {
+  className,
+  width = 32,
+  height = 32,
+}: LogoProps) {
+  
+  if (style === 'terminagent') {
+    return (
+      <Image
+        src="https://guzlanuvzfgcekmupcrx.supabase.co/storage/v1/object/public/terminals//image%20(16)%20copy.png"
+        alt="TerminAgent Logo"
+        width={width}
+        height={height}
+        className={className}
+      />
+    )
+  }
+  
   return style === 'fragments' ? (
     <svg
-      {...props}
+      className={className}
+      width={width}
+      height={height}
       viewBox="0 0 232 232"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
@@ -18,7 +44,9 @@ export default function Logo({
     </svg>
   ) : (
     <svg
-      {...props}
+      className={className}
+      width={width}
+      height={height}
       viewBox="0 0 224 232"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

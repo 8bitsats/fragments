@@ -1,11 +1,27 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import Image from 'next/image';
+import {
+  useEffect,
+  useState,
+} from 'react'
+
+import {
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
+import Image from 'next/image'
 
 export function CollapsibleWidget() {
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-4 left-4 z-50 flex items-end gap-2">
