@@ -402,12 +402,26 @@ export function FluxImageGenerator() {
                   {generatedImages.map((image, index) => (
                     <div key={index} className="space-y-3">
                       <div className="relative group">
-                        <img
-                          src={image.url}
-                          alt={image.prompt}
-                          className="w-full h-auto rounded-lg border shadow-lg"
-                        />
-                        <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                        <div className="relative overflow-hidden rounded-lg border shadow-lg">
+                          <img
+                            src={image.url}
+                            alt={image.prompt}
+                            className="w-full h-auto transition-all duration-1000 ease-out"
+                            style={{
+                              filter: 'blur(20px)',
+                              animation: 'revealImage 2s ease-out forwards'
+                            }}
+                            onLoad={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              setTimeout(() => {
+                                img.style.filter = 'blur(0px)';
+                              }, 100);
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 animate-pulse" 
+                               style={{ animation: 'fadeOut 2s ease-out forwards' }} />
+                        </div>
+                        <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
                           🎨 FLUX
                         </div>
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
