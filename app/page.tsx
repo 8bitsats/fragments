@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { AgentChat } from '@/components/agent-chat'
-import { NavBar } from '@/components/navbar'
-import { useAuth } from '@/lib/auth'
+
 import { ViewType } from '@/components/auth'
+import { NavBar } from '@/components/navbar'
 import { SolanaWallet } from '@/components/SolanaWallet'
+import { TerminAgentChat } from '@/components/terminagent-chat'
+import { useAuth } from '@/lib/auth'
 
 export default function Home() {
   const [isAuthDialogOpen, setAuthDialog] = useState(false);
@@ -39,7 +40,7 @@ export default function Home() {
           <SolanaWallet />
         </div>
         <div className="flex-1">
-          <AgentChat />
+          <TerminAgentChat />
         </div>
       </div>
     </main>
